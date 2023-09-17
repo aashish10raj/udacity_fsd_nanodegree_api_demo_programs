@@ -2,8 +2,8 @@ from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy  # , or_
 from flask_cors import CORS
 import random
+from backend.models import *
 
-from models import setup_db, Book
 
 BOOKS_PER_SHELF = 8
 
@@ -22,7 +22,10 @@ def paginate_books(request, selection):
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__)
-    setup_db(app)
+    app = Flask(__name__, instance_relative_config=True)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://aashishraj:123@localhost:5432/bookshelf'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    db.init_app(app)
     CORS(app)
 
     # CORS Headers
@@ -35,6 +38,9 @@ def create_app(test_config=None):
             "Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS"
         )
         return response
+
+    with app.app_context():
+        db.create_all()
 
     @app.route("/books")
     def retrieve_books():
@@ -127,6 +133,31 @@ def create_app(test_config=None):
         except:
             abort(422)
 
+    @app.errorhandler(404)
+    def not_found(error):
+        return (
+            jsonify({"success": False, "error": 404, "message": "resource not found"}),
+            404,
+        )
+
+    @app.errorhandler(422)
+    def unprocessable(error):
+        return (
+            jsonify({"success": False, "error": 422, "message": "unprocessable"}),
+            422,
+        )
+
+    @app.errorhandler(400)
+    def bad_request(error):
+        return jsonify({"success": False, "error": 400, "message": "bad request"}), 400
+
+    @app.errorhandler(405)
+    def not_found(error):
+        return (
+            jsonify({"success": False, "error": 405, "message": "method not allowed"}),
+            405,
+        )
+
     # @TODO: Review the above code for route handlers.
     #        Pay special attention to the status codes used in the aborts since those are relevant for this task!
 
@@ -137,3 +168,7 @@ def create_app(test_config=None):
     #       If you find any error responses returning as HTML, write new error handlers for them.
 
     return app
+
+if __name__ == '__main__':
+    app = create_app()
+    app.run(host="localhost", port=8000, debug=True)
