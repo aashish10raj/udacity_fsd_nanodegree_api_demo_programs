@@ -3,8 +3,7 @@ from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy  # , or_
 from flask_cors import CORS
 import random
-
-from models import setup_db, Book
+from backend.models import *
 
 BOOKS_PER_SHELF = 8
 
@@ -22,8 +21,10 @@ def paginate_books(request, selection):
 
 def create_app(test_config=None):
     # create and configure the app
-    app = Flask(__name__)
-    setup_db(app)
+    app = Flask(__name__, instance_relative_config=True)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://aashishraj:123@localhost:5432/bookshelf'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    db.init_app(app)
     CORS(app)
 
     # CORS Headers
@@ -36,6 +37,8 @@ def create_app(test_config=None):
             "Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS"
         )
         return response
+    with app.app_context():
+        db.create_all()
 
     @app.route("/books")
     def retrieve_books():
@@ -147,3 +150,7 @@ def create_app(test_config=None):
         return jsonify({"success": False, "error": 400, "message": "bad request"}), 400
 
     return app
+
+if __name__ == '__main__':
+    app = create_app()
+    app.run(host="localhost", port=8000, debug=True)
